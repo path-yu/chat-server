@@ -8,9 +8,7 @@ const schema = new mongoose.Schema({ name: String, size: String });
 
 function run() {
   mongoose
-    .connect(
-      "mongodb+srv://react:FZyg0RnKMINyjL9d@cluster0.h72djcl.mongodb.net"
-    )
+    .connect("mongodb://react:FZyg0RnKMINyjL9d@cluster0.h72djcl.mongodb.net")
     .then((res) => {
       console.log(
         "Pinged your deployment. You successfully connected to MongoDB!"
