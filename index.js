@@ -8,13 +8,15 @@ const schema = new mongoose.Schema({ name: String, size: String });
 
 function run() {
   mongoose
-    .connect("mongodb://react:FZyg0RnKMINyjL9d@cluster0.h72djcl.mongodb.net")
-    .then((res) => {
+    .connect(
+      "mongodb+srv://react:FZyg0RnKMINyjL9d@cluster0.h72djcl.mongodb.net/?retryWrites=true&w=majority"
+    )
+    .then(() => {
       console.log(
         "Pinged your deployment. You successfully connected to MongoDB!"
       );
       app.use("/api/product", product);
-      app.get("/test", async () => {
+      app.get("/test", async (req, res) => {
         const Tank = mongoose.model("Tank", schema);
 
         const small = new Tank({ size: "small" });
@@ -28,7 +30,7 @@ function run() {
           message: "Get data has successfully",
         });
       });
-      app.get("/all", async () => {
+      app.get("/all", async (req, res) => {
         const Tank = mongoose.model("Tank", schema);
         let list = await Tank.find().lean();
         res.json({
