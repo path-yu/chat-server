@@ -1,5 +1,5 @@
 const clients = {};
-const wsPort = 3002;
+const wsPort = 3000;
 const { WebSocketServer } = require("ws");
 const wss = new WebSocketServer({ port: wsPort });
 
