@@ -1,8 +1,6 @@
 // server.js
-import {
-  WebSocketClient,
-  WebSocketServer,
-} from "https://deno.land/x/websocket@v0.1.4/mod.ts";
+
+import { Application, Router } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 import { db } from "./firebase.ts";
 import {
   collection,
@@ -13,18 +11,19 @@ import {
   updateDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/9.8.1/firebase-firestore.js";
-interface MyWebSocket extends WebSocketClient {
+interface MyWebSocket extends WebSocket {
   userId: string;
   chatsId: string[];
 }
 const connectedClients = new Map<string, MyWebSocket>();
-
+const app = new Application();
 const port = 8080;
+const router = new Router();
 
 // send a message to all connected clients
 function sendMessage(message: string, clientId: string) {
   const client = connectedClients.get(clientId);
-  if (client && !client.isClosed) {
+  if (client) {
     client.send(message);
   }
 }
@@ -57,28 +56,57 @@ function sendJoinOrLeaveEvent(chatsId: string[], type: string, userId: string) {
     });
   });
 }
-const wss = new WebSocketServer(8081);
 // 在 WebSocket 服务器上添加监听器
 
-wss.on("connection", async function (ws: MyWebSocket, url) {
-  const userId = new URLSearchParams(url.split("?")[1]).get("userId")!;
+router.get("/start_web_socket", async (ctx) => {
+  const upgrade = ctx.request.headers.get("upgrade") || "";
+  if (upgrade.toLowerCase() != "websocket") {
+    return (ctx.response.body = {
+      message: "request isn't trying to upgrade to websocket.",
+    });
+  }
+  const socket = (await ctx.upgrade()) as MyWebSocket;
+  const userId = ctx.request.url.searchParams.get("userId")!;
   if (!userId) {
-    return ws.close(1008, "userId params is required");
+    return socket.close(1008, "userId params is required");
   }
   const user = await getDoc(doc(db, "Users", userId));
-  ws.chatsId = user.data()["chats"];
-  ws.userId = userId;
-  connectedClients.set(userId, ws);
+
+  if (!user.data()?.["chats"]) {
+    return socket.close(1008, "no chat data");
+  }
+  socket.chatsId = user.data()["chats"];
+  socket.userId = userId;
+  connectedClients.set(userId, socket);
   console.log(`New client connected: ${userId}`);
 
   await updateDoc(doc(db, "Users", userId), {
     online: true,
   });
-  sendJoinOrLeaveEvent(ws.chatsId, "userJoinedConnected", userId);
-  ws.on("message", function (message: string) {
-    const data = JSON.parse(message);
-    console.log(data);
+  sendJoinOrLeaveEvent(socket.chatsId, "userJoinedConnected", userId);
 
+  // broadcast the active users list when a new user logs in
+  socket.onopen = () => {
+    console.log("open");
+  };
+
+  // when a client disconnects, remove them from the connected clients list
+  // and broadcast the active users list
+  socket.onclose = async () => {
+    console.log(`disconnected Client ${socket.userId} `);
+    connectedClients.delete(socket.userId);
+    await updateDoc(doc(db, "Users", userId), {
+      online: false,
+    });
+    sendJoinOrLeaveEvent(socket.chatsId, "userDisconnected", userId);
+  };
+
+  // broadcast new message if someone sent one
+  socket.onmessage = (message) => {
+    if (!connectedClients.has(userId)) {
+      return;
+    }
+    const data = JSON.parse(message.data);
     if (data["type"] === "isTyping") {
       sendMessage(
         JSON.stringify({
@@ -88,18 +116,10 @@ wss.on("connection", async function (ws: MyWebSocket, url) {
         data["receiveUid"]
       );
     }
-    if (connectedClients.has(userId)) {
-      return;
-    }
-  });
-  ws.on("close", async function () {
-    console.log(`disconnected Client ${ws.userId} `);
-    connectedClients.delete(ws.userId);
-    await updateDoc(doc(db, "Users", userId), {
-      online: false,
-    });
-    sendJoinOrLeaveEvent(ws.chatsId, "userDisconnected", userId);
-  });
+  };
 });
+app.use(router.routes());
+app.use(router.allowedMethods());
 
-console.log("WebSocketServer at http://localhost:" + port);
+console.log("Listening at http://localhost:" + port);
+await app.listen({ port });
