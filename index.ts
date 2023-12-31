@@ -143,9 +143,10 @@ router.get("/getToken", (ctx) => {
   at.addGrant({ roomJoin: true, room: roomName });
   ctx.response.body = at.toJwt();
 });
-app.use(router.routes());
 app.use(oakCors()); // Enable CORS for All Routes
+app.use(router.routes());
 app.use(router.allowedMethods());
 
+console.info("CORS-enabled web server listening on port 8000");
 console.log("Listening at http://localhost:" + port);
 await app.listen({ port });
