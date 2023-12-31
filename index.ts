@@ -11,14 +11,21 @@ import {
   updateDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/9.8.1/firebase-firestore.js";
+import { AccessToken } from "npm:livekit-server-sdk";
 interface MyWebSocket extends WebSocket {
   userId: string;
   chatsId: string[];
+}
+interface RTCWebSocket extends WebSocket {
+  userId: string;
+  chatId: string;
 }
 const connectedClients = new Map<string, MyWebSocket>();
 const app = new Application();
 const port = 8080;
 const router = new Router();
+
+const rtcConnects = new Map<string, RTCWebSocket>();
 
 // send a message to all connected clients
 function sendMessage(message: string, clientId: string) {
@@ -57,7 +64,6 @@ function sendJoinOrLeaveEvent(chatsId: string[], type: string, userId: string) {
   });
 }
 // 在 WebSocket 服务器上添加监听器
-
 router.get("/start_web_socket", async (ctx) => {
   const upgrade = ctx.request.headers.get("upgrade") || "";
   if (upgrade.toLowerCase() != "websocket") {
@@ -117,6 +123,24 @@ router.get("/start_web_socket", async (ctx) => {
       );
     }
   };
+});
+
+router.get("/getToken", (ctx) => {
+  // client joins
+  const roomName = ctx.request.url.searchParams.get("roomName") || "roomName";
+  const participantName =
+    ctx.request.url.searchParams.get("participantName") ||
+    "quickstart-username";
+
+  const at = new AccessToken(
+    "APIFD3tjkTryJj9",
+    "5yEOI00VP86QDg0GXUQJhTTMNP1ErIq0aIg19nExKFB",
+    {
+      identity: participantName,
+    }
+  );
+  at.addGrant({ roomJoin: true, room: roomName });
+  ctx.response.body = at.toJwt();
 });
 app.use(router.routes());
 app.use(router.allowedMethods());
