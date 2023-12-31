@@ -2,6 +2,7 @@
 
 import { Application, Router } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 import { db } from "./firebase.ts";
+import { oakCors } from "https://deno.land/x/cors/mod.ts";
 import {
   collection,
   doc,
@@ -143,6 +144,7 @@ router.get("/getToken", (ctx) => {
   ctx.response.body = at.toJwt();
 });
 app.use(router.routes());
+app.use(oakCors()); // Enable CORS for All Routes
 app.use(router.allowedMethods());
 
 console.log("Listening at http://localhost:" + port);
