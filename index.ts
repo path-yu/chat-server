@@ -123,6 +123,36 @@ router.get("/start_web_socket", async (ctx) => {
         data["receiveUid"]
       );
     }
+    if (data["type"] === "newCall") {
+      sendMessage(
+        JSON.stringify({
+          type: "newCall",
+          value: data["value"],
+          receiveUid: data["receiveUid"],
+        }),
+        data["receiveUid"]
+      );
+    }
+    if (data["type"] == "changeCallStatus") {
+      sendMessage(
+        JSON.stringify({
+          type: "changeCallStatus",
+          value: data["value"],
+          receiveUid: data["receiveUid"],
+        }),
+        data["receiveUid"]
+      );
+    }
+    if (data["type"] === "endCall") {
+      sendMessage(
+        JSON.stringify({
+          type: "endCall",
+          value: data["value"],
+          receiveUid: data["receiveUid"],
+        }),
+        data["receiveUid"]
+      );
+    }
   };
 });
 
