@@ -26,8 +26,6 @@ const app = new Application();
 const port = 8080;
 const router = new Router();
 
-const rtcConnects = new Map<string, RTCWebSocket>();
-
 // send a message to all connected clients
 function sendMessage(message: string, clientId: string) {
   const client = connectedClients.get(clientId);
